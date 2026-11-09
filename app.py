@@ -25,7 +25,7 @@ etf_options = {
     "V500 (S&P 500 ETF)": "V500.AX",
     "V5AH (S&P 500 ETF - Hedged)": "V5AH.AX",
     "VAF (Australian Fixed Interest)": "VAF.AX",
-    "VFLT (Diversified Fixed Interest)": "VFLT.AX",
+    "VAP (Australian Property Securities)": "VAP.AX",
     "VTS (US Total Market Shares)": "VTS.AX",
     "VEU (All World ex-US Shares)": "VEU.AX"
 }
