@@ -521,24 +521,88 @@ elif app_mode == "Fixed Income Attribution":
     run_fi = st.sidebar.button("Run Fixed Income Attribution", type="primary")
 
     if run_fi:
-        # Common market shift calculations
         delta_y = y_curr - y_prior
         delta_cs = cs_curr - cs_prior
 
-        # Calculations for Portfolio (Fund)
+        # Portfolio (Fund) Attribution Components
         p_run_yield = p_yield / 12.0
         p_yc_impact = -p_dur * delta_y
         p_cs_impact = -p_cs_dur * delta_cs
         p_sum_known = p_run_yield + p_yc_impact + p_cs_impact
         p_residual = p_ret - p_sum_known
 
-        # Calculations for Benchmark (Index)
+        # Benchmark (Index) Attribution Components
         b_run_yield = b_yield / 12.0
         b_yc_impact = -b_dur * delta_y
         b_cs_impact = -b_cs_dur * delta_cs
         b_sum_known = b_run_yield + b_yc_impact + b_cs_impact
         b_residual = b_ret - b_sum_known
 
+        # Active Variances
+        diff_run_yield = p_run_yield - b_run_yield
+        diff_yc = p_yc_impact - b_yc_impact
+        diff_cs = p_cs_impact - b_cs_impact
+        diff_res = p_residual - b_residual
+
+        # --- WATERFALL CHART ---
+        waterfall_x = [
+            "Index Return",
+            "Running Yield Var",
+            "Yield Curve Var",
+            "Credit Spread Var",
+            "Residual Var",
+            "Fund Return"
+        ]
+        waterfall_y = [
+            b_ret,
+            diff_run_yield,
+            diff_yc,
+            diff_cs,
+            diff_res,
+            p_ret
+        ]
+        waterfall_measure = [
+            "absolute",
+            "relative",
+            "relative",
+            "relative",
+            "relative",
+            "total"
+        ]
+
+        fig_waterfall = go.Figure(go.Waterfall(
+            name="Fixed Income Attribution",
+            orientation="v",
+            measure=waterfall_measure,
+            x=waterfall_x,
+            textposition="outside",
+            text=[f"{val:+.2f}%" if m != "absolute" and m != "total" else f"{val:.2f}%" for val in waterfall_y],
+            y=waterfall_y,
+            connector={"line": {"color": "rgb(63, 63, 63)"}},
+            decreasing={"marker": {"color": "#e74c3c"}},
+            increasing={"marker": {"color": "#2ecc71"}},
+            totals={"marker": {"color": "#3498db"}}
+        ))
+
+        fig_waterfall.update_layout(
+            title="<b>Fixed Income Return Attribution Waterfall (Index to Fund)</b>",
+            yaxis_title="Return (%)",
+            template="plotly_dark",
+            showlegend=False
+        )
+
+        st.subheader("📊 Attribution Waterfall Chart")
+        st.plotly_chart(fig_waterfall, use_container_width=True)
+
+        st.markdown("---")
+
+        # --- SUMMARY METRICS (PLACED BEFORE THE TABLE) ---
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Fund Excess Return Over Index", f"{p_ret - b_ret:.2f}%")
+        col2.metric("Fund Total Residual", f"{p_residual:.2f}%")
+        col3.metric("Index Total Residual", f"{b_residual:.2f}%")
+
+        # --- ATTRIBUTION RESULTS TABLE ---
         attribution_table = pd.DataFrame({
             "Attribution Component": [
                 "Running Yield Contribution",
@@ -565,22 +629,17 @@ elif app_mode == "Fixed Income Attribution":
                 round(b_residual, 4)
             ],
             "Active Spread (Fund - Index) (%)": [
-                round(p_run_yield - b_run_yield, 4),
-                round(p_yc_impact - b_yc_impact, 4),
-                round(p_cs_impact - b_cs_impact, 4),
+                round(diff_run_yield, 4),
+                round(diff_yc, 4),
+                round(diff_cs, 4),
                 round(p_sum_known - b_sum_known, 4),
                 round(p_ret - b_ret, 4),
-                round(p_residual - b_residual, 4)
+                round(diff_res, 4)
             ]
         })
 
-        st.subheader("📊 Fixed Income Return Attribution Results")
+        st.subheader("📋 Fixed Income Return Attribution Results Table")
         st.markdown(f"**Period Evaluated:** 2026-08-31 to 2026-09-30 (ΔYield: {delta_y:+.3f}%, ΔCredit Spread: {delta_cs:+.3f}%)")
         st.dataframe(attribution_table, use_container_width=True)
-
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Fund Excess Return Over Index", f"{p_ret - b_ret:.2f}%")
-        col2.metric("Fund Total Residual", f"{p_residual:.2f}%")
-        col3.metric("Index Total Residual", f"{b_residual:.2f}%")
     else:
         st.info("👈 Review the default Janus Henderson Fund parameters in the sidebar, then click **Run Fixed Income Attribution**.")
