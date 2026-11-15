@@ -290,7 +290,7 @@ if app_mode == "AGX1 Factor Attribution":
 # =============================================================================
 elif app_mode == "SAA Portfolio Optimizer":
     st.title("📈 ASX Vanguard Strategic Asset Allocation (SAA) Optimizer")
-    st.markdown("Select your preferred Vanguard ASX ETFs, set your risk-free rate, and calculate the efficient frontier using 10 years of historical market data.")
+    st.markdown("Select your preferred Vanguard ASX ETFs, set your risk-free rate, and calculate the efficient frontier using 20 years of historical market data.")
 
     st.sidebar.header("Portfolio Parameters")
 
@@ -336,7 +336,7 @@ elif app_mode == "SAA Portfolio Optimizer":
             selected_etfs = [etf_options[name] for name in selected_display_names]
             
             with st.spinner("Fetching 10 years of historical data from Yahoo Finance and simulating 5,000 portfolios..."):
-                data = yf.download(selected_etfs, period="10y", auto_adjust=False, progress=False)
+                data = yf.download(selected_etfs, period="20y", auto_adjust=False, progress=False)
                 
                 if isinstance(data.columns, pd.MultiIndex):
                     prices = data['Adj Close']
