@@ -107,18 +107,19 @@ if app_mode == "AGX1 Factor Attribution":
                     "Res": residual,
                 })
 
-        else:  # Time-Varying Kalman Filter Model via Statsmodels UnobservedComponents / MLE
-            # Setting up state-space time-varying regression
+        else:  # Time-Varying Kalman Filter Model with Dynamic Covariance & P-Values
+            from scipy.stats import norm
+            
             y = df_raw["AGX1_MSCI"].values
             X = sm.add_constant(df_raw[["MSCI_RBA", "SMB", "HML", "UMD"]]).values
             
-            # Simple recursive Kalman filter implementation for TVP regression
             n_obs, n_features = X.shape
-            # Initialize states (betas) and covariance
             theta = np.zeros(n_features)
-            P = np.eye(n_features) * 1.0
-            delta = 0.99  # forgetting factor / transition covariance tuning
-            R = 1e-3      # measurement variance
+            P = np.eye(n_features) * 1.0  # State covariance matrix
+            R = 1e-3                      # Measurement variance (observation noise)
+            Q = np.eye(n_features) * 1e-5 # Process noise covariance
+            
+            recent_errors = []
             
             for i in range(n_obs):
                 x_t = X[i]
@@ -126,29 +127,48 @@ if app_mode == "AGX1 Factor Attribution":
                 current_row = df_raw.iloc[i]
                 
                 if i >= 35:
-                    # Prediction step
+                    # 1. Prediction step
                     y_pred = np.dot(x_t, theta)
                     error = y_t - y_pred
+                    recent_errors.append(error**2)
+                    if len(recent_errors) > 12:
+                        recent_errors.pop(0)
                     
-                    # Kalman gain update
+                    # Estimate local residual variance (sigma^2)
+                    sigma2 = np.mean(recent_errors) if recent_errors else R
+                    
+                    # 2. Update step
                     P_x = np.dot(P, x_t)
                     s = np.dot(x_t, P_x) + R
                     K = P_x / s
-                    theta = theta + K * error
-                    P = P - np.outer(K, x_t) @ P + np.eye(n_features) * 1e-5
                     
+                    theta = theta + K * error
+                    P = (np.eye(n_features) - np.outer(K, x_t)) @ P + Q
+                    
+                    # Extract time-varying parameters
                     alpha_active = theta[0]
                     beta_active = theta[1]
                     size_p = theta[2]
                     value_p = theta[3]
                     momentum_p = theta[4]
                     
+                    # Parameter standard errors from diagonal of P * sigma^2
+                    param_ses = np.sqrt(np.maximum(1e-8, np.diag(P) * sigma2))
+                    
+                    # Calculate t-stats and p-values (two-tailed normal test)
+                    t_stats = theta / param_ses
+                    p_values = 2 * (1 - norm.cdf(np.abs(t_stats)))
+                    
                     benchmark_contribution = beta_active * current_row["MSCI_RBA"]
                     size_contribution = size_p * current_row["SMB"]
                     value_contribution = value_p * current_row["HML"]
                     momentum_contribution = momentum_p * current_row["UMD"]
                     
-                    residual = error  # Kalman innovation error is the residual
+                    # Local pseudo R-squared based on variance explained vs total variance
+                    y_hist_slice = y[max(0, i-35):i+1]
+                    err_hist_slice = np.array(recent_errors) if recent_errors else np.array([error**2])
+                    r_sq = max(0.0, min(0.99, 1.0 - (np.mean(err_hist_slice) / max(1e-6, np.var(y_hist_slice)))))
+                    adj_r_sq = max(0.0, r_sq - (n_features / len(y_hist_slice)))
                     
                     attribution_results.append({
                         "EOM": current_row["EOM"],
@@ -158,21 +178,21 @@ if app_mode == "AGX1 Factor Attribution":
                         "Coeff_Size": size_p,
                         "Coeff_Value": value_p,
                         "Coeff_Momentum": momentum_p,
-                        "P_Alpha": 0.05,  # Filter state approximation
-                        "P_Beta_Active": 0.05,
-                        "P_Size": 0.05,
-                        "P_Value": 0.05,
-                        "P_Momentum": 0.05,
-                        "R_Squared": 0.85, # Dynamic fit proxy
-                        "Adj_R_Squared": 0.82,
+                        "P_Alpha": p_values[0],
+                        "P_Beta_Active": p_values[1],
+                        "P_Size": p_values[2],
+                        "P_Value": p_values[3],
+                        "P_Momentum": p_values[4],
+                        "R_Squared": r_sq,
+                        "Adj_R_Squared": adj_r_sq,
                         "Benchmark": benchmark_contribution,
                         "Size": size_contribution,
                         "Value": value_contribution,
                         "Momentum": momentum_contribution,
-                        "Res": residual,
+                        "Res": error,
                     })
                 else:
-                    # Warm-up phase initialization
+                    # Warm-up phase
                     theta += 0.01 * x_t * (y_t - np.dot(x_t, theta))
 
         df_attr = pd.DataFrame(attribution_results)
