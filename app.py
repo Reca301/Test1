@@ -26,7 +26,7 @@ st.sidebar.markdown("---")
 # TOOL 1: AGX1 FACTOR ATTRIBUTION
 # =============================================================================
 if app_mode == "AGX1 Factor Attribution":
-    st.title("📊 AGX1 Expanding-Window Factor Attribution")
+    st.title("📊 AGX1 4 Factor Attribution")
     st.markdown("This tool reads data from `Test1/AGX1_test.xlsx`, runs expanding-window OLS regressions, and displays split attribution charts and tables.")
 
     FILE_PATH = "data/AGX1_test.xlsx"
