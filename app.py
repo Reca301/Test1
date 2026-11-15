@@ -490,51 +490,55 @@ elif app_mode == "Fixed Income Attribution":
     st.markdown("Attribute fixed income returns into running yield, yield curve impact, credit spread impact, and residual components.")
 
     st.sidebar.header("Fixed Income Parameters")
-    st.sidebar.markdown("Enter portfolio and benchmark characteristics below:")
+    st.sidebar.markdown("Janus Henderson Australian Fixed Interest Fund Defaults:")
 
-    # Two columns in sidebar for Portfolio and Benchmark inputs
     sb_col1, sb_col2 = st.sidebar.columns(2)
 
     with sb_col1:
-        st.markdown("### **Portfolio**")
-        p_dur = st.number_input("P: Mod Duration", value=5.5, step=0.1, format="%.2f")
-        p_yield = st.number_input("P: Current Yield (%)", value=4.50, step=0.01, format="%.2f")
-        p_cs_dur = st.number_input("P: Spread Duration", value=3.0, step=0.1, format="%.2f")
-        p_ret = st.number_input("P: 1-Mo Return (%)", value=0.85, step=0.01, format="%.2f")
-        p_y_curr = st.number_input("P: Yield Cur ME (%)", value=4.20, step=0.01, format="%.2f")
-        p_y_prior = st.number_input("P: Yield Pri ME (%)", value=4.35, step=0.01, format="%.2f")
-        p_cs_curr = st.number_input("P: Spread Cur ME (%)", value=1.50, step=0.01, format="%.2f")
-        p_cs_prior = st.number_input("P: Spread Pri ME (%)", value=1.55, step=0.01, format="%.2f")
+        st.markdown("### **Fund (Portfolio)**")
+        p_dur = st.number_input("Mod Duration", value=5.32, step=0.01, format="%.2f")
+        p_yield = st.number_input("Current Yield (%)", value=5.24, step=0.01, format="%.2f")
+        p_cs_dur = st.number_input("Spread Duration", value=1.47, step=0.01, format="%.2f")
+        p_ret = st.number_input("1M Return (%)", value=-0.94, step=0.01, format="%.2f")
 
     with sb_col2:
-        st.markdown("### **Benchmark**")
-        b_dur = st.number_input("B: Mod Duration", value=6.0, step=0.1, format="%.2f")
-        b_yield = st.number_input("B: Current Yield (%)", value=4.10, step=0.01, format="%.2f")
-        b_cs_dur = st.number_input("B: Spread Duration", value=2.5, step=0.1, format="%.2f")
-        b_ret = st.number_input("B: 1-Mo Return (%)", value=0.65, step=0.01, format="%.2f")
-        b_y_curr = st.number_input("B: Yield Cur ME (%)", value=4.15, step=0.01, format="%.2f")
-        b_y_prior = st.number_input("B: Yield Pri ME (%)", value=4.30, step=0.01, format="%.2f")
-        b_cs_curr = st.number_input("B: Spread Cur ME (%)", value=1.20, step=0.01, format="%.2f")
-        b_cs_prior = st.number_input("B: Spread Pri ME (%)", value=1.25, step=0.01, format="%.2f")
+        st.markdown("### **Index (Benchmark)**")
+        b_dur = st.number_input("Mod Duration ", value=4.75, step=0.01, format="%.2f")
+        b_yield = st.number_input("Current Yield (%) ", value=3.63, step=0.01, format="%.2f")
+        b_cs_dur = st.number_input("Spread Duration ", value=0.46, step=0.01, format="%.2f")
+        b_ret = st.number_input("1M Return (%) ", value=-0.86, step=0.01, format="%.2f")
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### **Market Movements**")
+    m_col1, m_col2 = st.sidebar.columns(2)
+    with m_col1:
+        y_curr = st.number_input("CGB 5Y (Cur ME)", value=4.995, step=0.001, format="%.3f")
+        cs_curr = st.number_input("Cred Spd (Cur ME)", value=0.905, step=0.001, format="%.3f")
+    with m_col2:
+        y_prior = st.number_input("CGB 5Y (Pri ME)", value=4.738, step=0.001, format="%.3f")
+        cs_prior = st.number_input("Cred Spd (Pri ME)", value=0.812, step=0.001, format="%.3f")
 
     run_fi = st.sidebar.button("Run Fixed Income Attribution", type="primary")
 
     if run_fi:
-        # Calculations for Portfolio
+        # Common market shift calculations
+        delta_y = y_curr - y_prior
+        delta_cs = cs_curr - cs_prior
+
+        # Calculations for Portfolio (Fund)
         p_run_yield = p_yield / 12.0
-        p_yc_impact = -p_dur * (p_y_curr - p_y_prior)
-        p_cs_impact = -p_cs_dur * (p_cs_curr - p_cs_prior)
+        p_yc_impact = -p_dur * delta_y
+        p_cs_impact = -p_cs_dur * delta_cs
         p_sum_known = p_run_yield + p_yc_impact + p_cs_impact
         p_residual = p_ret - p_sum_known
 
-        # Calculations for Benchmark
+        # Calculations for Benchmark (Index)
         b_run_yield = b_yield / 12.0
-        b_yc_impact = -b_dur * (b_y_curr - b_y_prior)
-        b_cs_impact = -b_cs_dur * (b_cs_curr - b_cs_prior)
+        b_yc_impact = -b_dur * delta_y
+        b_cs_impact = -b_cs_dur * delta_cs
         b_sum_known = b_run_yield + b_yc_impact + b_cs_impact
         b_residual = b_ret - b_sum_known
 
-        # Build comparison dataframe
         attribution_table = pd.DataFrame({
             "Attribution Component": [
                 "Running Yield Contribution",
@@ -544,7 +548,7 @@ elif app_mode == "Fixed Income Attribution":
                 "Actual 1-Month Return",
                 "Residual (Idiosyncratic)"
             ],
-            "Portfolio (%)": [
+            "Fund (%)": [
                 round(p_run_yield, 4),
                 round(p_yc_impact, 4),
                 round(p_cs_impact, 4),
@@ -552,7 +556,7 @@ elif app_mode == "Fixed Income Attribution":
                 round(p_ret, 4),
                 round(p_residual, 4)
             ],
-            "Benchmark (%)": [
+            "Index (%)": [
                 round(b_run_yield, 4),
                 round(b_yc_impact, 4),
                 round(b_cs_impact, 4),
@@ -560,7 +564,7 @@ elif app_mode == "Fixed Income Attribution":
                 round(b_ret, 4),
                 round(b_residual, 4)
             ],
-            "Active Spread (P - B) (%)": [
+            "Active Spread (Fund - Index) (%)": [
                 round(p_run_yield - b_run_yield, 4),
                 round(p_yc_impact - b_yc_impact, 4),
                 round(p_cs_impact - b_cs_impact, 4),
@@ -571,12 +575,12 @@ elif app_mode == "Fixed Income Attribution":
         })
 
         st.subheader("📊 Fixed Income Return Attribution Results")
+        st.markdown(f"**Period Evaluated:** 2026-08-31 to 2026-09-30 (ΔYield: {delta_y:+.3f}%, ΔCredit Spread: {delta_cs:+.3f}%)")
         st.dataframe(attribution_table, use_container_width=True)
 
-        # Summary Metrics
         col1, col2, col3 = st.columns(3)
-        col1.metric("Portfolio Excess Return Over BM", f"{p_ret - b_ret:.2f}%")
-        col2.metric("Portfolio Total Residual", f"{p_residual:.2f}%")
-        col3.metric("Benchmark Total Residual", f"{b_residual:.2f}%")
+        col1.metric("Fund Excess Return Over Index", f"{p_ret - b_ret:.2f}%")
+        col2.metric("Fund Total Residual", f"{p_residual:.2f}%")
+        col3.metric("Index Total Residual", f"{b_residual:.2f}%")
     else:
-        st.info("👈 Enter your Portfolio and Benchmark parameters in the sidebar, then click **Run Fixed Income Attribution**.")
+        st.info("👈 Review the default Janus Henderson Fund parameters in the sidebar, then click **Run Fixed Income Attribution**.")
