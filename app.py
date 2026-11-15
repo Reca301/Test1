@@ -4,7 +4,6 @@ import numpy as np
 import statsmodels.api as sm
 import yfinance as yf
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import streamlit as st
 
 # Page Configuration
@@ -28,7 +27,7 @@ st.sidebar.markdown("---")
 # =============================================================================
 if app_mode == "AGX1 Factor Attribution":
     st.title("📊 AGX1 Expanding-Window Factor Attribution")
-    st.markdown("This tool reads data from `Test1/AGX1_test.xlsx`, runs expanding-window OLS regressions, and displays attribution charts and tables.")
+    st.markdown("This tool reads data from `Test1/AGX1_test.xlsx`, runs expanding-window OLS regressions, and displays split attribution charts and tables.")
 
     FILE_PATH = "data/AGX1_test.xlsx"
 
@@ -121,14 +120,14 @@ if app_mode == "AGX1 Factor Attribution":
 
         st.success("Attribution calculations completed successfully!")
 
-        # --- STACKED BAR CHART (Above Data Tables) ---
-        st.subheader("📈 Factor Attribution & Adj. R-Squared (Last 12 Periods)")
-        
+        # Filter for the most recent 12 periods
         df_chart = df_attribution.tail(12).copy()
         df_chart["EOM_Str"] = df_chart["EOM"].dt.strftime("%Y-%m")
 
-        fig = make_subplots(specs=[[{"secondary_y": True}]])
-
+        # --- CHART 1: Stacked Bar Chart of Return Contributions ---
+        st.subheader("📈 Factor Return Contributions (Last 12 Periods)")
+        
+        fig_bar = go.Figure()
         components = [
             ("Alpha", "Alpha_Active", "#2ecc71"),
             ("Benchmark", "Benchmark", "#3498db"),
@@ -139,39 +138,48 @@ if app_mode == "AGX1 Factor Attribution":
         ]
 
         for name, col, color in components:
-            fig.add_trace(
+            fig_bar.add_trace(
                 go.Bar(
                     x=df_chart["EOM_Str"],
                     y=df_chart[col],
                     name=name,
                     marker_color=color
-                ),
-                secondary_y=False
+                )
             )
 
-        fig.add_trace(
+        fig_bar.update_layout(
+            barmode="relative",
+            xaxis_title="End of Month (EOM)",
+            yaxis_title="Return Contribution",
+            template="plotly_dark",
+            hovermode="x unified",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+        # --- CHART 2: Adjusted R-Squared Line Chart (Matrix Green & Bold) ---
+        st.subheader("📉 Adjusted R-Squared (Last 12 Periods)")
+        
+        fig_r2 = go.Figure()
+        fig_r2.add_trace(
             go.Scatter(
                 x=df_chart["EOM_Str"],
                 y=df_chart["Adj_R_Squared"],
                 name="Adj R-Squared",
                 mode="lines+markers",
-                line=dict(color="#2c3e50", width=3)
-            ),
-            secondary_y=True
+                line=dict(color="#00FF41", width=4),  # Matrix green in bold
+                marker=dict(size=8, color="#00FF41")
+            )
         )
 
-        fig.update_layout(
-            barmode="relative",
+        fig_r2.update_layout(
             xaxis_title="End of Month (EOM)",
-            template="plotly_white",
-            hovermode="x unified",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            yaxis_title="Adjusted R-Squared",
+            yaxis=dict(range=[0, 1.05]),
+            template="plotly_dark",
+            hovermode="x unified"
         )
-
-        fig.update_yaxes(title_text="Return Contribution", secondary_y=False)
-        fig.update_yaxes(title_text="Adjusted R-Squared", secondary_y=True, range=[0, 1.05])
-
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig_r2, use_container_width=True)
 
         # --- DATA TABLES ---
         st.subheader("📋 Attribution Results Table")
@@ -300,72 +308,4 @@ elif app_mode == "SAA Portfolio Optimizer":
                     df_efficient_front['Sharpe_Ratio'] = (df_efficient_front['Returns'] - risk_free_rate) / df_efficient_front['Volatility']
                     
                     Q1 = df_efficient_front['Sharpe_Ratio'].quantile(0.25)
-                    Q3 = df_efficient_front['Sharpe_Ratio'].quantile(0.75)
-                    IQR = Q3 - Q1
-                    
-                    lower_bound = Q1 - 1.25 * IQR
-                    upper_bound = Q3 + 1.25 * IQR
-                    vol_cap = 0.9 * df_efficient_front['Volatility'].max()
-                    
-                    df_ef_filtered = df_efficient_front[
-                        (df_efficient_front['Sharpe_Ratio'] >= lower_bound) &
-                        (df_efficient_front['Sharpe_Ratio'] <= upper_bound) &
-                        (df_efficient_front['Volatility'] <= vol_cap)
-                    ]
-                    
-                    if df_ef_filtered.empty:
-                        df_ef_filtered = df_efficient_front
-                        
-                    optimal_portfolio = df_ef_filtered.loc[df_ef_filtered['Sharpe_Ratio'].idxmax()]
-                    optimal_return = optimal_portfolio['Returns']
-                    optimal_volatility = optimal_portfolio['Volatility']
-                    optimal_sharpe = optimal_portfolio['Sharpe_Ratio']
-                    
-                    x_line = np.linspace(0, max(portfolios_df['Volatility']) + 0.01, 100)
-                    y_line = optimal_sharpe * x_line + risk_free_rate
-                    
-                    fig = go.Figure()
-                    fig.add_trace(go.Scatter(
-                        x=portfolios_df['Volatility'], y=portfolios_df['Returns'],
-                        mode='markers', marker=dict(size=6, color='#3498db', opacity=0.5),
-                        name='Simulated Portfolios'
-                    ))
-                    fig.add_trace(go.Scatter(
-                        x=df_efficient_front['Volatility'], y=df_efficient_front['Returns'],
-                        mode='markers', marker=dict(size=8, color='#2ecc71'),
-                        name='Efficient Frontier'
-                    ))
-                    fig.add_trace(go.Scatter(
-                        x=x_line, y=y_line,
-                        mode='lines', line=dict(color='#e74c3c', width=2, dash='dash'),
-                        name='Capital Market Line (CML)'
-                    ))
-                    fig.add_trace(go.Scatter(
-                        x=[optimal_volatility], y=[optimal_return],
-                        mode='markers', marker=dict(size=16, color='#e74c3c', symbol='star'),
-                        name='Optimal Portfolio'
-                    ))
-                    fig.update_layout(
-                        title='<b>Efficient Frontier & Capital Market Line (CML)</b>',
-                        xaxis_title='Annualized Volatility (Standard Deviation)',
-                        yaxis_title='Annualized Return',
-                        template='plotly_white',
-                        hovermode='closest'
-                    )
-                    
-                    st.success("Optimization completed successfully!")
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                    st.markdown("### 🎯 Optimal Portfolio Metrics & Allocation")
-                    col1, col2, col3 = st.columns(3)
-                    col1.metric("Expected Annual Return", f"{optimal_return*100:.2f}%")
-                    col2.metric("Annualized Volatility", f"{optimal_volatility*100:.2f}%")
-                    col3.metric("Sharpe Ratio", f"{optimal_sharpe:.2f}")
-                    
-                    weights_df = pd.DataFrame({
-                        "ETF Ticker": [name.split(" ")[0] for name in selected_display_names],
-                        "Optimal Weight (%)": [round(optimal_portfolio[f'{t}_Wt'] * 100, 2) for t in selected_etfs]
-                    })
-                    st.dataframe(weights_df, use_container_width=True)
-    else:
-        st.info("👈 Select your ETFs and Risk-Free Rate in the sidebar, then click **Optimize SAA** to begin.")
+                    Q3 = df_efficient_front['Sharpe_Ratio'].quantile(
