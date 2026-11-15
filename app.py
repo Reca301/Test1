@@ -370,10 +370,37 @@ elif app_mode == "SAA Portfolio Optimizer":
                     col2.metric("Annualized Volatility", f"{optimal_volatility*100:.2f}%")
                     col3.metric("Sharpe Ratio", f"{optimal_sharpe:.2f}")
                     
-                    weights_df = pd.DataFrame({
-                        "ETF Ticker": [name.split(" ")[0] for name in selected_display_names],
-                        "Optimal Weight (%)": [round(optimal_portfolio[f'{t}_Wt'] * 100, 2) for t in selected_etfs]
-                    })
+                    # Calculate individual ETF data periods, average returns, and standard deviations
+                    etf_table_data = []
+                    for t in selected_etfs:
+                        # Extract ticker prices series
+                        if isinstance(prices, pd.DataFrame):
+                            p_series = prices[t].dropna()
+                        else:
+                            p_series = prices.dropna()
+                            
+                        start_date = p_series.index.min().strftime('%Y-%m-%d')
+                        end_date = p_series.index.max().strftime('%Y-%m-%d')
+                        period_str = f"{start_date} to {end_date}"
+                        
+                        # Annualized return and std dev for this specific ticker
+                        t_returns = daily_returns[t] if isinstance(daily_returns, pd.DataFrame) else daily_returns
+                        ann_ret = t_returns.mean() * 252
+                        ann_std = t_returns.std() * np.sqrt(252)
+                        
+                        # Find ticker display name
+                        display_name = [k for k, v in etf_options.items() if v == t][0]
+                        ticker_code = display_name.split(" ")[0]
+                        
+                        etf_table_data.append({
+                            "ETF Ticker": ticker_code,
+                            "Data Period": period_str,
+                            "Average Annual Return (%)": round(ann_ret * 100, 2),
+                            "Annualized Standard Deviation (%)": round(ann_std * 100, 2),
+                            "Optimal Weight (%)": round(optimal_portfolio[f'{t}_Wt'] * 100, 2)
+                        })
+                    
+                    weights_df = pd.DataFrame(etf_table_data)
                     st.dataframe(weights_df, use_container_width=True)
     else:
         st.info("👈 Select your ETFs and Risk-Free Rate in the sidebar, then click **Optimize SAA** to begin.")
