@@ -576,7 +576,7 @@ elif app_mode == "Fixed Income Attribution":
             measure=waterfall_measure,
             x=waterfall_x,
             textposition="outside",
-            text=[f"{val:+.2f}%" if m != "absolute" and m != "total" else f"{val:.2f}%" for val in waterfall_y],
+            text=[f"{float(val):+.2f}%" if m != "absolute" and m != "total" else f"{float(val):.2f}%" for m, val in zip(waterfall_measure, waterfall_y)],
             y=waterfall_y,
             connector={"line": {"color": "rgb(63, 63, 63)"}},
             decreasing={"marker": {"color": "#e74c3c"}},
