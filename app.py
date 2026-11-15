@@ -308,4 +308,72 @@ elif app_mode == "SAA Portfolio Optimizer":
                     df_efficient_front['Sharpe_Ratio'] = (df_efficient_front['Returns'] - risk_free_rate) / df_efficient_front['Volatility']
                     
                     Q1 = df_efficient_front['Sharpe_Ratio'].quantile(0.25)
-                    Q3 = df_efficient_front['Sharpe_Ratio'].quantile(
+                    Q3 = df_efficient_front['Sharpe_Ratio'].quantile(0.75)
+                    IQR = Q3 - Q1
+                    
+                    lower_bound = Q1 - 1.25 * IQR
+                    upper_bound = Q3 + 1.25 * IQR
+                    vol_cap = 0.9 * df_efficient_front['Volatility'].max()
+                    
+                    df_ef_filtered = df_efficient_front[
+                        (df_efficient_front['Sharpe_Ratio'] >= lower_bound) &
+                        (df_efficient_front['Sharpe_Ratio'] <= upper_bound) &
+                        (df_efficient_front['Volatility'] <= vol_cap)
+                    ]
+                    
+                    if df_ef_filtered.empty:
+                        df_ef_filtered = df_efficient_front
+                        
+                    optimal_portfolio = df_ef_filtered.loc[df_ef_filtered['Sharpe_Ratio'].idxmax()]
+                    optimal_return = optimal_portfolio['Returns']
+                    optimal_volatility = optimal_portfolio['Volatility']
+                    optimal_sharpe = optimal_portfolio['Sharpe_Ratio']
+                    
+                    x_line = np.linspace(0, max(portfolios_df['Volatility']) + 0.01, 100)
+                    y_line = optimal_sharpe * x_line + risk_free_rate
+                    
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=portfolios_df['Volatility'], y=portfolios_df['Returns'],
+                        mode='markers', marker=dict(size=6, color='#3498db', opacity=0.5),
+                        name='Simulated Portfolios'
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=df_efficient_front['Volatility'], y=df_efficient_front['Returns'],
+                        mode='markers', marker=dict(size=8, color='#2ecc71'),
+                        name='Efficient Frontier'
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=x_line, y=y_line,
+                        mode='lines', line=dict(color='#e74c3c', width=2, dash='dash'),
+                        name='Capital Market Line (CML)'
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=[optimal_volatility], y=[optimal_return],
+                        mode='markers', marker=dict(size=16, color='#e74c3c', symbol='star'),
+                        name='Optimal Portfolio'
+                    ))
+                    fig.update_layout(
+                        title='<b>Efficient Frontier & Capital Market Line (CML)</b>',
+                        xaxis_title='Annualized Volatility (Standard Deviation)',
+                        yaxis_title='Annualized Return',
+                        template='plotly_dark',
+                        hovermode='closest'
+                    )
+                    
+                    st.success("Optimization completed successfully!")
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    st.markdown("### 🎯 Optimal Portfolio Metrics & Allocation")
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("Expected Annual Return", f"{optimal_return*100:.2f}%")
+                    col2.metric("Annualized Volatility", f"{optimal_volatility*100:.2f}%")
+                    col3.metric("Sharpe Ratio", f"{optimal_sharpe:.2f}")
+                    
+                    weights_df = pd.DataFrame({
+                        "ETF Ticker": [name.split(" ")[0] for name in selected_display_names],
+                        "Optimal Weight (%)": [round(optimal_portfolio[f'{t}_Wt'] * 100, 2) for t in selected_etfs]
+                    })
+                    st.dataframe(weights_df, use_container_width=True)
+    else:
+        st.info("👈 Select your ETFs and Risk-Free Rate in the sidebar, then click **Optimize SAA** to begin.")
