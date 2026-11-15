@@ -26,7 +26,7 @@ st.sidebar.markdown("---")
 # TOOL 1: AGX1 FACTOR ATTRIBUTION (OLS & KALMAN FILTER)
 # =============================================================================
 if app_mode == "AGX1 Factor Attribution":
-    st.title("📊 AGX1 Factor Attribution (OLS vs. Kalman Filter)")
+    st.title("📊 AGX1 Factor Attribution")
     st.markdown("This tool reads data from `data/AGX1_test.xlsx` and performs factor attribution using either Expanding-Window OLS or a Time-Varying Kalman Filter model.")
 
     # Model Selection Sidebar
