@@ -14,7 +14,7 @@ st.title("📊 AGX1 Expanding-Window Factor Attribution")
 st.markdown("This app reads data from your repository folder (`Test1/AGX1_test.xlsx`), runs expanding-window OLS regressions, and displays the attribution results.")
 
 # File path referencing your Test1 folder in GitHub
-FILE_PATH = "Test1/AGX1_test.xlsx"
+FILE_PATH = "Test1/data/AGX1_test.xlsx"
 
 @st.cache_data
 def run_attribution(path):
