@@ -32,7 +32,7 @@ st.sidebar.markdown("---")
 # =============================================================================
 if app_mode == "Equities Factor Attribution":
     st.title("📊 Brigher Super Australian Shares Factor Attribution")
-    st.markdown("This tool reads data from `data/BSAUS_test.xlsx` and performs factor attribution.")
+    st.markdown("This tool reads data from `data/BSAUS_test.xlsx` and performs 4-factor attribution.")
 
     model_choice = st.sidebar.selectbox(
         "Attribution Model:",
