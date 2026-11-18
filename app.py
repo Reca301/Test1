@@ -19,7 +19,7 @@ st.sidebar.title("📊 Navigation")
 app_mode = st.sidebar.radio(
     "Choose Tool:",
     [
-        "AGX1 Factor Attribution", 
+        "Equities Factor Attribution", 
         "SAA Portfolio Optimizer", 
         "Fixed Income Attribution"
     ]
@@ -30,23 +30,23 @@ st.sidebar.markdown("---")
 # =============================================================================
 # TOOL 1: AGX1 FACTOR ATTRIBUTION (OLS & KALMAN FILTER)
 # =============================================================================
-if app_mode == "AGX1 Factor Attribution":
-    st.title("📊 AGX1 Factor Attribution (OLS vs. Kalman Filter)")
-    st.markdown("This tool reads data from `data/AGX1_test.xlsx` and performs factor attribution using either Expanding-Window OLS or a Time-Varying Kalman Filter model.")
+if app_mode == "Brighter Super Australian Shares - Accumulation Factor Attribution":
+    st.title("📊 Brigher Super Australian Shares Factor Attribution (OLS vs. Kalman Filter)")
+    st.markdown("This tool reads data from `data/BSAUS_test.xlsx` and performs factor attribution using either Expanding-Window OLS or a Time-Varying Kalman Filter model.")
 
     model_choice = st.sidebar.selectbox(
         "Attribution Model:",
         ["Expanding-Window OLS", "Time-Varying Kalman Filter"]
     )
 
-    FILE_PATH = "data/AGX1_test.xlsx"
+    FILE_PATH = "data/BSAUS_test.xlsx"
 
     @st.cache_data
     def run_attribution(path, model_type):
-        required_cols = ["EOM", "AGX1_MSCI", "MSCI_RBA", "SMB", "HML", "UMD"]
+        required_cols = ["EOM", "BSAUS_BM", "BM_RBA", "SMB", "HML", "UMD"]
         
         df_raw = (
-            pd.read_excel(path, sheet_name="Data")[required_cols]
+            pd.read_excel(path, sheet_name="Data_BS")[required_cols]
             .dropna()
             .sort_values("EOM")
             .reset_index(drop=True)
@@ -58,19 +58,19 @@ if app_mode == "AGX1 Factor Attribution":
         if model_type == "Expanding-Window OLS":
             for i in range(35, len(df_raw)):
                 df_hist = df_raw.iloc[: i + 1].copy()
-                y = df_hist["AGX1_MSCI"]
-                X = sm.add_constant(df_hist[["MSCI_RBA", "SMB", "HML", "UMD"]])
+                y = df_hist["BSAUS_BM"]
+                X = sm.add_constant(df_hist[["BM_RBA", "SMB", "HML", "UMD"]])
                 model = sm.OLS(y, X).fit()
 
                 alpha_active = model.params["const"]
-                beta_active = model.params["MSCI_RBA"]
+                beta_active = model.params["BM_RBA"]
                 size_p = model.params["SMB"]
                 value_p = model.params["HML"]
                 momentum_p = model.params["UMD"]
 
                 current_row = df_raw.iloc[i]
-                agx1_return = current_row["AGX1_MSCI"]
-                msci_rba = current_row["MSCI_RBA"]
+                agx1_return = current_row["BSAUS_BM"]
+                msci_rba = current_row["BM_RBA"]
                 smb = current_row["SMB"]
                 hml = current_row["HML"]
                 umd = current_row["UMD"]
@@ -91,7 +91,7 @@ if app_mode == "AGX1 Factor Attribution":
 
                 attribution_results.append({
                     "EOM": current_row["EOM"],
-                    "AGX1_MSCI": agx1_return,
+                    "BSAUS_BM": agx1_return,
                     "Alpha_Active": alpha_active,
                     "Coeff_Beta_Active": beta_active,
                     "Coeff_Size": size_p,
@@ -112,8 +112,8 @@ if app_mode == "AGX1 Factor Attribution":
                 })
 
         else:
-            y = df_raw["AGX1_MSCI"].values
-            X = sm.add_constant(df_raw[["MSCI_RBA", "SMB", "HML", "UMD"]]).values
+            y = df_raw["BSAUS_BM"].values
+            X = sm.add_constant(df_raw[["BM_RBA", "SMB", "HML", "UMD"]]).values
             
             n_obs, n_features = X.shape
             theta = np.zeros(n_features)
@@ -154,7 +154,7 @@ if app_mode == "AGX1 Factor Attribution":
                     t_stats = theta / param_ses
                     p_values = 2 * (1 - norm.cdf(np.abs(t_stats)))
                     
-                    benchmark_contribution = beta_active * current_row["MSCI_RBA"]
+                    benchmark_contribution = beta_active * current_row["BM_RBA"]
                     size_contribution = size_p * current_row["SMB"]
                     value_contribution = value_p * current_row["HML"]
                     momentum_contribution = momentum_p * current_row["UMD"]
@@ -166,7 +166,7 @@ if app_mode == "AGX1 Factor Attribution":
                     
                     attribution_results.append({
                         "EOM": current_row["EOM"],
-                        "AGX1_MSCI": y_t,
+                        "BSAUS_BM": y_t,
                         "Alpha_Active": alpha_active,
                         "Coeff_Beta_Active": beta_active,
                         "Coeff_Size": size_p,
@@ -268,7 +268,7 @@ if app_mode == "AGX1 Factor Attribution":
 
         st.subheader("🔍 Reconciliation Check (Last 10 Observations)")
         st.dataframe(
-            df_attribution[["EOM", "AGX1_MSCI", "Reconstructed_Return"]].tail(10),
+            df_attribution[["EOM", "BSAUS_BM", "Reconstructed_Return"]].tail(10),
             use_container_width=True,
         )
 
@@ -279,7 +279,7 @@ if app_mode == "AGX1 Factor Attribution":
         st.download_button(
             label="📥 Download Attribution Results as Excel",
             data=buffer.getvalue(),
-            file_name="AGX1_Attribution_Results.xlsx",
+            file_name="BSAUS_Attribution_Results.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     else:
