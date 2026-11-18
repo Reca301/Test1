@@ -5,20 +5,20 @@ import streamlit as st
 
 # Page Configuration
 st.set_page_config(
-    page_title="AGX1 Factor Attribution",
+    page_title="Brigher Super Australian Shares - Accumulation account Factor Attribution",
     page_icon="📊",
     layout="wide"
 )
 
-st.title("📊 AGX1 Expanding-Window Factor Attribution")
+st.title("📊 Australian Shares Accumulation Expanding-Window Factor Attribution")
 st.markdown("This app reads data from your repository folder (`Test1/AGX1_test.xlsx`), runs expanding-window OLS regressions, and displays the attribution results.")
 
 # File path referencing your Test1 folder in GitHub
-FILE_PATH = "data/AGX1_test.xlsx"
+FILE_PATH = "data/BSAUS_test.xlsx"
 
 @st.cache_data
 def run_attribution(path):
-    required_cols = ["EOM", "AGX1_MSCI", "MSCI_RBA", "SMB", "HML", "UMD"]
+    required_cols = ["EOM", "BSAUS_BM", "BM_RBA", "SMB", "HML", "UMD"]
     
     # Read Excel file from Test1 folder
     df_raw = (
@@ -34,19 +34,19 @@ def run_attribution(path):
     # Expanding-window regression starting at 36th observation (index 35)
     for i in range(35, len(df_raw)):
         df_hist = df_raw.iloc[: i + 1].copy()
-        y = df_hist["AGX1_MSCI"]
-        X = sm.add_constant(df_hist[["MSCI_RBA", "SMB", "HML", "UMD"]])
+        y = df_hist["BSAUS_BM"]
+        X = sm.add_constant(df_hist[["BM_RBA", "SMB", "HML", "UMD"]])
         model = sm.OLS(y, X).fit()
 
         alpha_active = model.params["const"]
-        beta_active = model.params["MSCI_RBA"]
+        beta_active = model.params["BM_RBA"]
         size_p = model.params["SMB"]
         value_p = model.params["HML"]
         momentum_p = model.params["UMD"]
 
         current_row = df_raw.iloc[i]
-        agx1_return = current_row["AGX1_MSCI"]
-        msci_rba = current_row["MSCI_RBA"]
+        agx1_return = current_row["BSAUS_BM"]
+        msci_rba = current_row["BM_RBA"]
         smb = current_row["SMB"]
         hml = current_row["HML"]
         umd = current_row["UMD"]
@@ -67,7 +67,7 @@ def run_attribution(path):
 
         attribution_results.append({
             "EOM": current_row["EOM"],
-            "AGX1_MSCI": agx1_return,
+            "BSAUS_BM": agx1_return,
             "Alpha_Active": alpha_active,
             "Coeff_Beta_Active": beta_active,
             "Coeff_Size": size_p,
@@ -115,7 +115,7 @@ if st.button("Run Factor Attribution", type="primary"):
     # Display reconciliation check
     st.subheader("🔍 Reconciliation Check (Last 10 Observations)")
     st.dataframe(
-        df_attribution[["EOM", "AGX1_MSCI", "Reconstructed_Return"]].tail(10),
+        df_attribution[["EOM", "BSAUS_BM", "Reconstructed_Return"]].tail(10),
         use_container_width=True,
     )
 
@@ -127,8 +127,8 @@ if st.button("Run Factor Attribution", type="primary"):
     st.download_button(
         label="📥 Download Attribution Results as Excel",
         data=buffer.getvalue(),
-        file_name="AGX1_Attribution_Results.xlsx",
+        file_name="BSAUS_Attribution_Results.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 else:
-    st.info("👈 Click **Run Factor Attribution** to load your dataset from `Test1/AGX1_test.xlsx` and view the web output.")
+    st.info("👈 Click **Run Factor Attribution** to load your dataset from `data/BSAUS_test.xlsx` and view the web output.")
