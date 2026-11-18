@@ -98,7 +98,7 @@ if app_mode == "Equities Factor Attribution":
                     "Coeff_Value": value_p,
                     "Coeff_Momentum": momentum_p,
                     "P_Alpha": model.pvalues["const"],
-                    "P_Beta_Active": model.pvalues["MSCI_RBA"],
+                    "P_Beta_Active": model.pvalues["BM_RBA"],
                     "P_Size": model.pvalues["SMB"],
                     "P_Value": model.pvalues["HML"],
                     "P_Momentum": model.pvalues["UMD"],
