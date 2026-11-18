@@ -30,7 +30,7 @@ st.sidebar.markdown("---")
 # =============================================================================
 # TOOL 1: AGX1 FACTOR ATTRIBUTION (OLS & KALMAN FILTER)
 # =============================================================================
-if app_mode == "Brighter Super Australian Shares - Accumulation Factor Attribution":
+if app_mode == "Equities Factor Attribution":
     st.title("📊 Brigher Super Australian Shares Factor Attribution (OLS vs. Kalman Filter)")
     st.markdown("This tool reads data from `data/BSAUS_test.xlsx` and performs factor attribution using either Expanding-Window OLS or a Time-Varying Kalman Filter model.")
 
